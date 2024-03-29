@@ -4,7 +4,7 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import me.nooneboss.data.User
 import org.ktorm.database.Database
-import java.util.*
+import org.ktorm.database.asIterable
 
 object AuthSystem {
     private fun createHikariDataSource(url: String, driver: String) = HikariDataSource(
@@ -12,57 +12,48 @@ object AuthSystem {
         .apply {
             driverClassName = driver
             jdbcUrl = url
-            maximumPoolSize = 3
+            maximumPoolSize = 5
             username="postgres"
             password="postgres"
             validate()
         }
     )
 
-    val database = Database.connect(createHikariDataSource(url = "jdbc:postgresql://localhost:5432/postgres", driver = "org.postgresql.Driver"))
+    val database = Database.connect(createHikariDataSource(url = "jdbc:postgresql://192.168.0.3:5432/postgres", driver = "org.postgresql.Driver"))
 
+    fun login(login: String, password: String) : Boolean{
+        val login = database.useConnection { connection ->
 
-    fun login(login: String, password: String) : Boolean {
-        val statement = database.useConnection {
-            it.prepareStatement("select login_user(?,?)")
+            connection.prepareStatement("select login_user(?,?)").use { statement ->
+                statement.setString(1, login)
+                statement.setString(2, password)
+                statement.executeQuery().asIterable().map { it.getBoolean(1) }
+            }
         }
 
-        statement.setString(1, login)
-        statement.setString(2, password)
-
-        val result = statement.executeQuery()
-        result.next()
-
-        return result.getBoolean(1)
+        return login.first()
     }
 
     fun register(login: String, password: String) : Boolean{
-        val statement = database.useConnection {
-            it.prepareStatement("select register_user(?,?)")
+        val statement = database.useConnection { connection ->
+            connection.prepareStatement("select register_user(?,?)").use { statement ->
+                statement.setString(1, login)
+                statement.setString(2, password)
+                statement.executeQuery().asIterable().map { it.getBoolean(1) }
+            }
         }
 
-        statement.setString(1, login)
-        statement.setString(2, password)
-
-        val result = statement.executeQuery()
-        result.next()
-
-        return result.getBoolean(1)
+        return statement.first()
     }
 
-    fun getUser(userLogin: String): User? {
-        val statement = database.useConnection {
-            it.prepareStatement("select * from users where login = ?")
-        }
-        statement.setString(1, userLogin)
-        val result = statement.executeQuery()
-        return if(result.next()) {
-            User(
-                result.getString("login"),
-                result.getString("password")
-            )
-        } else {
-            null
-        }
+    fun getUser(login: String): User? {
+        val statement = database.useConnection { connection ->
+
+            connection.prepareStatement("select * from users where login = ?").use { statement ->
+                statement.setString(1, login)
+                statement.executeQuery().asIterable().map { User(it.getString("login"), it.getString("password")) }
+                }
+            }
+        return statement.firstOrNull()
     }
 }
