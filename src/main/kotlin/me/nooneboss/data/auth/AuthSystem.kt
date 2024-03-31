@@ -6,7 +6,7 @@ import me.nooneboss.data.User
 import org.ktorm.database.Database
 import org.ktorm.database.asIterable
 
-object AuthSystem {
+class AuthSystem(val ip: String, val port: String) {
     private fun createHikariDataSource(url: String, driver: String) = HikariDataSource(
         HikariConfig()
         .apply {
@@ -19,7 +19,7 @@ object AuthSystem {
         }
     )
 
-    val database = Database.connect(createHikariDataSource(url = "jdbc:postgresql://192.168.0.3:5432/postgres", driver = "org.postgresql.Driver"))
+    val database = Database.connect(createHikariDataSource(url = "jdbc:postgresql://$ip:$port/postgres", driver = "org.postgresql.Driver"))
 
     fun login(login: String, password: String) : Boolean{
         val login = database.useConnection { connection ->

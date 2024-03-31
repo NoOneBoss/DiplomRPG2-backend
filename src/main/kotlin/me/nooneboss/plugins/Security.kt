@@ -11,6 +11,7 @@ import io.ktor.server.plugins.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import me.nooneboss.Systems
 import me.nooneboss.data.User
 import me.nooneboss.data.auth.AuthSystem
 import java.util.*
@@ -41,8 +42,8 @@ fun Application.configureSecurity() {
             validate{
                 val userLogin = it.payload.getClaim("login").asString()
                 val userPassword = it.payload.getClaim("password").asString()
-                if(AuthSystem.login(userLogin, userPassword)){
-                    AuthSystem.getUser(userLogin)
+                if(Systems.authSystem.login(userLogin, userPassword)){
+                    Systems.authSystem.getUser(userLogin)
                 }
                 else null
             }
@@ -52,7 +53,7 @@ fun Application.configureSecurity() {
     routing {
         post("/login"){
             val user = call.receive<User>()
-            if(AuthSystem.login(user.login, user.password)){
+            if(Systems.authSystem.login(user.login, user.password)){
                 val token = JWTConfig.generateToken(user, secret)
                 call.respondText(token)
 
@@ -66,7 +67,7 @@ fun Application.configureSecurity() {
 
         post("/register"){
             val user = call.receive<User>()
-            if(!AuthSystem.register(user.login, user.password)){
+            if(!Systems.authSystem.register(user.login, user.password)){
                 println("[LOG] User ${user.login} registered")
                 call.respondText ("Successfully registration!", status = HttpStatusCode.OK)
             }

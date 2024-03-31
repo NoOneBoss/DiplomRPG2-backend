@@ -8,8 +8,15 @@ fun main(args: Array<String>) {
     io.ktor.server.netty.EngineMain.main(args)
 }
 
+object Systems {
+    lateinit var authSystem: AuthSystem
+}
+
 fun Application.module() {
-    AuthSystem
+    Systems.authSystem = AuthSystem(
+            environment.config.propertyOrNull("databases.postgresql.address")?.getString() ?: "localhost",
+            environment.config.propertyOrNull("databases.postgresql.port")?.getString() ?: "5432",
+    )
 
     configureSerialization()
     configureSecurity()
