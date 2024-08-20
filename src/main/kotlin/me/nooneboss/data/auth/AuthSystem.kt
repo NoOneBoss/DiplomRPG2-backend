@@ -1,59 +1,41 @@
 package me.nooneboss.data.auth
 
-import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
-import me.nooneboss.data.User
-import org.ktorm.database.Database
-import org.ktorm.database.asIterable
+import com.mongodb.client.MongoClient
+import com.mongodb.client.MongoClients
+import com.mongodb.client.MongoCollection
+import com.mongodb.client.MongoDatabase
+import org.bson.Document
+import java.util.*
 
-class AuthSystem(val ip: String, val port: String) {
-    private fun createHikariDataSource(url: String, driver: String) = HikariDataSource(
-        HikariConfig()
-        .apply {
-            driverClassName = driver
-            jdbcUrl = url
-            maximumPoolSize = 5
-            username="postgres"
-            password="postgres"
-            validate()
-        }
-    )
+class AuthSystem(val connectionString: String, val databaseName: String) {
+    private val client: MongoClient = MongoClients.create(connectionString)
+    private val database: MongoDatabase = client.getDatabase(databaseName)
+    private val usersCollection: MongoCollection<Document> = database.getCollection("users")
 
-    val database = Database.connect(createHikariDataSource(url = "jdbc:postgresql://$ip:$port/postgres", driver = "org.postgresql.Driver"))
-
-    fun login(login: String, password: String) : Boolean{
-        val login = database.useConnection { connection ->
-
-            connection.prepareStatement("select login_user(?,?)").use { statement ->
-                statement.setString(1, login)
-                statement.setString(2, password)
-                statement.executeQuery().asIterable().map { it.getBoolean(1) }
-            }
-        }
-
-        return login.first()
+    fun login(login: String, password: String): Boolean {
+        val user = usersCollection.find(Document("login", login).append("password", password)).firstOrNull()
+        return user != null
     }
 
-    fun register(login: String, password: String) : Boolean{
-        val statement = database.useConnection { connection ->
-            connection.prepareStatement("select register_user(?,?)").use { statement ->
-                statement.setString(1, login)
-                statement.setString(2, password)
-                statement.executeQuery().asIterable().map { it.getBoolean(1) }
-            }
+    fun register(login: String, password: String): Boolean {
+        val existingUser = usersCollection.find(Document("login", login)).firstOrNull()
+        if (existingUser != null) {
+            return false
         }
 
-        return statement.first()
+        val newUser = Document("login", login).append("password", password).append("uuid", UUID.randomUUID().toString())
+        usersCollection.insertOne(newUser)
+        return true
     }
 
     fun getUser(login: String): User? {
-        val statement = database.useConnection { connection ->
-
-            connection.prepareStatement("select * from users where login = ?").use { statement ->
-                statement.setString(1, login)
-                statement.executeQuery().asIterable().map { User(it.getString("login"), it.getString("password")) }
-                }
-            }
-        return statement.firstOrNull()
+        val userDoc = usersCollection.find(Document("login", login)).firstOrNull()
+        return userDoc?.let {
+            User(
+                uuid = UUID.fromString(it.getString("uuid")),
+                login = it.getString("login"),
+                password = it.getString("password")
+            )
+        }
     }
 }

@@ -7,14 +7,11 @@ import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
-import io.ktor.server.plugins.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import me.nooneboss.Systems
-import me.nooneboss.data.User
-import me.nooneboss.data.auth.AuthSystem
-import java.util.*
+import me.nooneboss.data.auth.User
 
 private object JWTConfig{
     val realm = "Access to the /api path"
@@ -52,26 +49,35 @@ fun Application.configureSecurity() {
 
     routing {
         post("/login"){
-            val user = call.receive<User>()
+            val formParameters = call.receiveParameters()
+            val user = User(
+                null,
+                formParameters["login"].toString(),
+                formParameters["password"].toString()
+            )
             if(Systems.authSystem.login(user.login, user.password)){
                 val token = JWTConfig.generateToken(user, secret)
                 call.respondText(token)
-
                 println("[LOG] User ${user.login} joined")
             }
             else {
-                call.respondText("Login failed, incorrect login or password", status = HttpStatusCode.Unauthorized)
+                call.respondText("Failed!", status = HttpStatusCode.Unauthorized)
                 println("[LOG] User ${user.login} failed to login!")
             }
         }
 
         post("/register"){
-            val user = call.receive<User>()
-            if(!Systems.authSystem.register(user.login, user.password)){
+            val formParameters = call.receiveParameters()
+            val user = User(
+                null,
+                formParameters["login"].toString(),
+                formParameters["password"].toString()
+            )
+            if(Systems.authSystem.register(user.login, user.password)){
                 println("[LOG] User ${user.login} registered")
-                call.respondText ("Successfully registration!", status = HttpStatusCode.OK)
+                call.respondText ("Successfully!", status = HttpStatusCode.OK)
             }
-            else call.respondText("Registration failed, user with this login already exists", status = HttpStatusCode.Unauthorized)
+            else call.respondText("Failed!", status = HttpStatusCode.Unauthorized)
         }
     }
 }

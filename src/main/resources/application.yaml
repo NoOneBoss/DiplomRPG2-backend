@@ -8,9 +8,8 @@ jwt:
   secret: "diplomrpgASFDKF13RKSDKF00$21MSDKASDFR$"
 
 databases:
-  postgresql:
-    address: localhost
-    port: 5432
-  mongo:
-    address: localhost
+  mongodb:
+    user: nooneboss
+    password: admin
+    address: 127.0.0.1
     port: 27017
